@@ -20,12 +20,27 @@ export default function Header() {
                     </svg>
                     <span className="text-sm font-medium">GitHub</span>
                 </Link>
-                <h1 className="text-xl font-bold text-gray-900">
+                <Link href="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
                     Permissioned Airdrop
-                </h1>
+                </Link>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
+                <nav className="flex items-center space-x-4">
+                    <Link
+                        href="/"
+                        className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                        Claim Airdrop
+                    </Link>
+                    <Link
+                        href="/admin"
+                        className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                        Admin
+                    </Link>
+                </nav>
+
                 <ConnectButton />
             </div>
         </header>
