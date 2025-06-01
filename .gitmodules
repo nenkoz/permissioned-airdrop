@@ -1,0 +1,6 @@
+[submodule "permissioned-airdrop-vlayer/lib/forge-std"]
+	path = permissioned-airdrop-vlayer/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "simple/lib/forge-std"]
+	path = simple/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
