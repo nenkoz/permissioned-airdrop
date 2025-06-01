@@ -1,8 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { useReadContract } from "wagmi";
+import { useReadContract, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
-import { ChevronLeftIcon, ClockIcon, CurrencyDollarIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ClockIcon, CurrencyDollarIcon, UsersIcon, GlobeAltIcon, CalendarIcon } from "@heroicons/react/24/outline";
+
+interface CampaignStats {
+    totalCampaigns: bigint;
+    activeCampaigns: bigint;
+    totalFundsLocked: bigint;
+}
 
 interface Campaign {
     id: bigint;
@@ -19,150 +25,199 @@ interface Campaign {
     expiresAt: bigint;
 }
 
-const CampaignCard: React.FC<{ campaign: Campaign; campaignId: number }> = ({ campaign, campaignId }) => {
-    const isETH = campaign.tokenAddress === "0x0000000000000000000000000000000000000000";
-    const remainingFunds = campaign.totalFunds - campaign.distributedFunds;
-    const progressPercentage = campaign.totalFunds > 0n
-        ? Number((campaign.distributedFunds * 100n) / campaign.totalFunds)
-        : 0;
-
-    const timeLeft = Number(campaign.expiresAt) * 1000 - Date.now();
-    const daysLeft = Math.max(0, Math.ceil(timeLeft / (1000 * 60 * 60 * 24)));
-
-    const formatAddress = (address: string) =>
-        `${address.slice(0, 6)}...${address.slice(-4)}`;
-
-    return (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{campaign.name}</h3>
-                    <p className="text-gray-600 text-sm mb-2">{campaign.description}</p>
-                    <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full w-fit">
-                        <span>@{campaign.targetDomain}</span>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                        {isETH ? `${formatEther(campaign.rewardPerNFT)} ETH` : `${formatEther(campaign.rewardPerNFT)} tokens`}
-                    </div>
-                    <div className="text-sm text-gray-500">per NFT</div>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                {/* Progress Bar */}
-                <div>
-                    <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">Distribution Progress</span>
-                        <span className="font-medium">{progressPercentage.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                            className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${progressPercentage}%` }}
-                        ></div>
-                    </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-3 text-center">
-                        <CurrencyDollarIcon className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                        <div className="text-sm text-gray-600">Remaining</div>
-                        <div className="font-semibold text-blue-700">
-                            {isETH ? `${formatEther(remainingFunds)}` : formatEther(remainingFunds)}
-                        </div>
-                    </div>
-
-                    <div className="bg-purple-50 rounded-lg p-3 text-center">
-                        <UsersIcon className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-                        <div className="text-sm text-gray-600">Claims</div>
-                        <div className="font-semibold text-purple-700">
-                            {campaign.totalFunds > 0n
-                                ? Number(campaign.distributedFunds / campaign.rewardPerNFT)
-                                : 0}
-                        </div>
-                    </div>
-
-                    <div className="bg-orange-50 rounded-lg p-3 text-center">
-                        <ClockIcon className="h-6 w-6 text-orange-600 mx-auto mb-1" />
-                        <div className="text-sm text-gray-600">Days Left</div>
-                        <div className="font-semibold text-orange-700">
-                            {daysLeft}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Campaign Details */}
-                <div className="border-t pt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Campaign ID:</span>
-                        <span className="font-mono">#{campaignId}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Creator:</span>
-                        <span className="font-mono">{formatAddress(campaign.creator)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Total Pool:</span>
-                        <span className="font-semibold">
-                            {isETH ? `${formatEther(campaign.totalFunds)} ETH` : `${formatEther(campaign.totalFunds)} tokens`}
-                        </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Expires:</span>
-                        <span>{new Date(Number(campaign.expiresAt) * 1000).toLocaleDateString()}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+const campaignAbi = [
+    {
+        inputs: [{ name: "campaignId", type: "uint256" }],
+        name: "getCampaign",
+        outputs: [{
+            name: "", type: "tuple", components: [
+                { name: "id", type: "uint256" },
+                { name: "creator", type: "address" },
+                { name: "name", type: "string" },
+                { name: "description", type: "string" },
+                { name: "targetDomain", type: "string" },
+                { name: "tokenAddress", type: "address" },
+                { name: "totalFunds", type: "uint256" },
+                { name: "distributedFunds", type: "uint256" },
+                { name: "rewardPerNFT", type: "uint256" },
+                { name: "isActive", type: "bool" },
+                { name: "createdAt", type: "uint256" },
+                { name: "expiresAt", type: "uint256" },
+            ]
+        }],
+        stateMutability: "view",
+        type: "function",
+    }
+] as const;
 
 export const CampaignsPage: React.FC = () => {
-    const { data: campaignsData, isLoading, error } = useReadContract({
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+    const publicClient = usePublicClient();
+
+    const { data: statsData, isLoading, error } = useReadContract({
         address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
         abi: [
             {
                 inputs: [],
-                name: "getAllActiveCampaigns",
+                name: "getCampaignStats",
                 outputs: [
                     {
-                        name: "", type: "tuple[]", components: [
-                            { name: "id", type: "uint256" },
-                            { name: "creator", type: "address" },
-                            { name: "name", type: "string" },
-                            { name: "description", type: "string" },
-                            { name: "targetDomain", type: "string" },
-                            { name: "tokenAddress", type: "address" },
-                            { name: "totalFunds", type: "uint256" },
-                            { name: "distributedFunds", type: "uint256" },
-                            { name: "rewardPerNFT", type: "uint256" },
-                            { name: "isActive", type: "bool" },
-                            { name: "createdAt", type: "uint256" },
-                            { name: "expiresAt", type: "uint256" },
+                        name: "", type: "tuple", components: [
+                            { name: "totalCampaigns", type: "uint256" },
+                            { name: "activeCampaigns", type: "uint256" },
+                            { name: "totalFundsLocked", type: "uint256" },
                         ]
-                    },
-                    { name: "", type: "uint256[]" }
+                    }
                 ],
                 stateMutability: "view",
                 type: "function",
             },
         ],
-        functionName: "getAllActiveCampaigns",
+        functionName: "getCampaignStats",
     });
 
-    const campaigns = campaignsData?.[0] as Campaign[] | undefined;
-    const campaignIds = campaignsData?.[1] as bigint[] | undefined;
+    const stats = statsData as CampaignStats | undefined;
+
+    // Fetch real campaigns from the blockchain
+    useEffect(() => {
+        const fetchRealCampaigns = async () => {
+            if (!stats || Number(stats.totalCampaigns) === 0 || !publicClient) return;
+
+            setLoadingCampaigns(true);
+            const fetchedCampaigns: Campaign[] = [];
+
+            try {
+                // Fetch each campaign individually using the public client
+                for (let i = 1; i <= Number(stats.totalCampaigns); i++) {
+                    try {
+                        const result = await publicClient.readContract({
+                            address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+                            abi: campaignAbi,
+                            functionName: 'getCampaign',
+                            args: [BigInt(i)],
+                        });
+
+                        // Check if campaign exists (id !== 0)
+                        if (result && result.id !== 0n) {
+                            fetchedCampaigns.push({
+                                id: result.id,
+                                creator: result.creator,
+                                name: result.name,
+                                description: result.description,
+                                targetDomain: result.targetDomain,
+                                tokenAddress: result.tokenAddress,
+                                totalFunds: result.totalFunds,
+                                distributedFunds: result.distributedFunds,
+                                rewardPerNFT: result.rewardPerNFT,
+                                isActive: result.isActive,
+                                createdAt: result.createdAt,
+                                expiresAt: result.expiresAt,
+                            });
+                        }
+                    } catch (campaignError) {
+                        console.error(`Error fetching campaign ${i}:`, campaignError);
+                        // Continue with next campaign
+                    }
+                }
+
+                setCampaigns(fetchedCampaigns);
+            } catch (error) {
+                console.error("Error fetching campaigns:", error);
+            } finally {
+                setLoadingCampaigns(false);
+            }
+        };
+
+        fetchRealCampaigns();
+    }, [stats, publicClient]);
+
+    const formatTimeLeft = (expiresAt: bigint) => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeLeft = Number(expiresAt) - now;
+
+        if (timeLeft <= 0) return "Expired";
+
+        const days = Math.floor(timeLeft / (24 * 60 * 60));
+        const hours = Math.floor((timeLeft % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((timeLeft % (60 * 60)) / 60);
+
+        if (days > 0) return `${days}d ${hours}h left`;
+        if (hours > 0) return `${hours}h ${minutes}m left`;
+        return `${minutes}m left`;
+    };
+
+    const formatTokenType = (tokenAddress: string) => {
+        return tokenAddress === "0x0000000000000000000000000000000000000000" ? "ETH" : "ERC20";
+    };
+
+    const formatRewardAmount = (rewardPerNFT: bigint, isETH: boolean) => {
+        const amount = Number(rewardPerNFT) / 1e18;
+        const tokenSymbol = isETH ? "ETH" : "tokens";
+
+        // If amount is very small (less than 0.000001), use scientific notation
+        if (amount < 0.000001 && amount > 0) {
+            return `${amount.toExponential(2)} ${tokenSymbol}`;
+        }
+
+        // If amount is small but not tiny, show more decimals
+        if (amount < 0.01) {
+            return `${amount.toFixed(8)} ${tokenSymbol}`;
+        }
+
+        // For larger amounts, use fewer decimals
+        return `${amount.toFixed(6)} ${tokenSymbol}`;
+    };
+
+    const formatFundsAmount = (funds: number, isETH: boolean) => {
+        const tokenSymbol = isETH ? "ETH" : "tokens";
+
+        // If amount is very small (less than 0.000001), use scientific notation
+        if (funds < 0.000001 && funds > 0) {
+            return `${funds.toExponential(2)} ${tokenSymbol}`;
+        }
+
+        // If amount is small but not tiny, show more decimals
+        if (funds < 0.01) {
+            return `${funds.toFixed(8)} ${tokenSymbol}`;
+        }
+
+        // For larger amounts, use fewer decimals
+        return `${funds.toFixed(6)} ${tokenSymbol}`;
+    };
+
+    const activeCampaigns = campaigns.filter(campaign =>
+        campaign.isActive && Number(campaign.expiresAt) > Math.floor(Date.now() / 1000)
+    );
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8 px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="flex items-center justify-center py-20">
-                        <div className="loading loading-spinner loading-lg text-[#915bf8]"></div>
-                        <span className="ml-4 text-lg">Loading campaigns...</span>
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+                <div className="flex">
+                    <div className="flex-1 p-8 pr-4" style={{ maxWidth: 'calc(100vw - 400px)' }}>
+                        <div className="flex items-center justify-center py-20">
+                            <div className="loading loading-spinner loading-lg text-[#915bf8]"></div>
+                            <span className="ml-4 text-lg">Loading campaigns...</span>
+                        </div>
+                    </div>
+                    <div className="w-80 bg-white/50 backdrop-blur-sm border-l border-gray-200 p-6">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-red-100 rounded-lg">
+                                    <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Platform Stats</h3>
+                                    <p className="text-sm text-gray-500">Live campaign overview</p>
+                                </div>
+                            </div>
+                            <div className="text-center py-8">
+                                <div className="loading loading-spinner loading-md text-[#915bf8]"></div>
+                                <p className="mt-2 text-sm text-gray-500">Loading stats...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -171,18 +226,39 @@ export const CampaignsPage: React.FC = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8 px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center py-20">
-                        <div className="text-6xl mb-4">⚠️</div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Failed to Load Campaigns</h2>
-                        <p className="text-gray-600 mb-6">There was an error loading the campaign data.</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="btn bg-[#915bf8] hover:bg-[#915bf8]/90 text-white"
-                        >
-                            Try Again
-                        </button>
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+                <div className="flex">
+                    <div className="flex-1 p-8 pr-4" style={{ maxWidth: 'calc(100vw - 400px)' }}>
+                        <div className="text-center py-20">
+                            <div className="text-6xl mb-4">⚠️</div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Failed to Load Campaigns</h2>
+                            <p className="text-gray-600 mb-6">There was an error loading the campaign data.</p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="btn bg-[#915bf8] hover:bg-[#915bf8]/90 text-white"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    </div>
+                    <div className="w-80 bg-white/50 backdrop-blur-sm border-l border-gray-200 p-6">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-red-100 rounded-lg">
+                                    <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Platform Stats</h3>
+                                    <p className="text-sm text-gray-500">Live campaign overview</p>
+                                </div>
+                            </div>
+                            <div className="text-center py-8">
+                                <div className="text-red-500">⚠️</div>
+                                <p className="mt-2 text-sm text-gray-500">Error loading stats</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -190,85 +266,202 @@ export const CampaignsPage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8 px-6">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        to="/"
-                        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-                    >
-                        <ChevronLeftIcon className="h-5 w-5 mr-2" />
-                        Back to Home
-                    </Link>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+            <div className="flex">
+                {/* Main Content Area */}
+                <div className="flex-1 p-8 pr-4" style={{ maxWidth: 'calc(100vw - 400px)' }}>
+                    {/* Header */}
+                    <div className="mb-8">
+                        <Link
+                            to="/"
+                            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+                        >
+                            <ChevronLeftIcon className="h-5 w-5 mr-2" />
+                            Back to Home
+                        </Link>
 
-                    <div className="text-center">
                         <h1 className="text-4xl xl:text-5xl font-bold text-gray-900 mb-4">
                             🎯 Live Campaigns
                         </h1>
-                        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                            Explore all active airdrop campaigns and their detailed statistics
+                        <p className="text-xl text-gray-600 leading-relaxed">
+                            Explore all active airdrop campaigns with detailed information about rewards, domain restrictions, and expiration dates
                         </p>
                     </div>
+
+                    {/* Loading Campaigns */}
+                    {loadingCampaigns && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                            <div className="loading loading-spinner loading-lg text-[#915bf8]"></div>
+                            <p className="mt-4 text-gray-600">Loading campaign details...</p>
+                        </div>
+                    )}
+
+                    {/* Active Campaigns List */}
+                    {!loadingCampaigns && activeCampaigns.length > 0 && (
+                        <div className="space-y-6">
+                            {activeCampaigns.map((campaign) => {
+                                const isETH = campaign.tokenAddress === "0x0000000000000000000000000000000000000000";
+                                const fundsLeft = Number(campaign.totalFunds - campaign.distributedFunds);
+                                const fundsLeftInEth = fundsLeft / 1e18; // Convert from wei to ETH
+                                const progressPercent = Number(campaign.totalFunds) > 0
+                                    ? (Number(campaign.distributedFunds) / Number(campaign.totalFunds)) * 100
+                                    : 0;
+
+                                return (
+                                    <div key={campaign.id.toString()} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-300">
+                                        {/* Campaign Header */}
+                                        <div className="flex items-start justify-between mb-6">
+                                            <div className="flex-1 pr-6">
+                                                <h3 className="text-2xl font-bold text-gray-900 mb-3">{campaign.name}</h3>
+                                                <p className="text-gray-600 text-lg leading-relaxed">{campaign.description}</p>
+                                            </div>
+                                            <div className="text-right flex-shrink-0 bg-green-50 p-4 rounded-xl">
+                                                <div className="text-2xl font-bold text-green-600 mb-1">
+                                                    {formatRewardAmount(campaign.rewardPerNFT, isETH)}
+                                                </div>
+                                                <div className="text-sm text-gray-500">per claim</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Campaign Details Grid */}
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-purple-100 rounded-lg">
+                                                    <GlobeAltIcon className="h-5 w-5 text-purple-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm text-gray-500">Target Domain</div>
+                                                    <div className="font-semibold text-purple-600">@{campaign.targetDomain}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-orange-100 rounded-lg">
+                                                    <CalendarIcon className="h-5 w-5 text-orange-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm text-gray-500">Expires</div>
+                                                    <div className="font-semibold text-orange-600">{formatTimeLeft(campaign.expiresAt)}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-100 rounded-lg">
+                                                    <CurrencyDollarIcon className="h-5 w-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm text-gray-500">Funds Left</div>
+                                                    <div className="font-semibold text-blue-600">
+                                                        {formatFundsAmount(fundsLeftInEth, isETH)}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-green-100 rounded-lg">
+                                                    <UsersIcon className="h-5 w-5 text-green-600" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm text-gray-500">Token Type</div>
+                                                    <div className="font-semibold text-green-600">{formatTokenType(campaign.tokenAddress)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Bar */}
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-sm text-gray-600 mb-2">
+                                                <span>Campaign Progress</span>
+                                                <span>{progressPercent.toFixed(1)}% distributed</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className="bg-gradient-to-r from-[#915bf8] to-purple-600 h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Creator Info */}
+                                        <div className="text-sm text-gray-500">
+                                            <span>Created by: </span>
+                                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{campaign.creator.slice(0, 6)}...{campaign.creator.slice(-4)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* No Active Campaigns */}
+                    {!loadingCampaigns && activeCampaigns.length === 0 && campaigns.length >= 0 && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                            <div className="text-6xl mb-4">📊</div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-4">No Active Campaigns</h3>
+                            <p className="text-gray-700 mb-6">
+                                There are currently no active campaigns. Be the first to create one!
+                            </p>
+                            <div className="flex gap-4 justify-center flex-wrap">
+                                <Link
+                                    to="/create-campaign"
+                                    className="btn bg-[#915bf8] hover:bg-[#915bf8]/90 text-white px-8"
+                                >
+                                    Create Campaign
+                                </Link>
+                                <Link
+                                    to="/claim-airdrops"
+                                    className="btn bg-green-600 hover:bg-green-700 text-white px-8"
+                                >
+                                    Claim Rewards
+                                </Link>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Campaigns Grid */}
-                {campaigns && campaigns.length > 0 ? (
-                    <>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-[#915bf8] mb-2">
-                                        {campaigns.length}
-                                    </div>
-                                    <div className="text-gray-600">Active Campaigns</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-green-600 mb-2">
-                                        {campaigns.reduce((acc, campaign) => {
-                                            return acc + (campaign.totalFunds > 0n
-                                                ? Number(campaign.distributedFunds / campaign.rewardPerNFT)
-                                                : 0);
-                                        }, 0)}
-                                    </div>
-                                    <div className="text-gray-600">Total Claims</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-blue-600 mb-2">
-                                        {campaigns.reduce((acc, campaign) => {
-                                            return acc + Number(formatEther(campaign.totalFunds - campaign.distributedFunds));
-                                        }, 0).toFixed(4)}
-                                    </div>
-                                    <div className="text-gray-600">ETH Available</div>
-                                </div>
+                {/* Right Sidebar */}
+                <div className="w-80 bg-white/50 backdrop-blur-sm border-l border-gray-200 p-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-red-100 rounded-lg">
+                                <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Platform Stats</h3>
+                                <p className="text-sm text-gray-500">Live campaign overview</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {campaigns.map((campaign, index) => (
-                                <CampaignCard
-                                    key={index}
-                                    campaign={campaign}
-                                    campaignId={campaignIds ? Number(campaignIds[index]) : index + 1}
-                                />
-                            ))}
-                        </div>
-                    </>
-                ) : (
-                    <div className="text-center py-20">
-                        <div className="text-6xl mb-6">🎭</div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">No Active Campaigns</h2>
-                        <p className="text-gray-600 mb-8">
-                            There are currently no active campaigns running. Be the first to create one!
-                        </p>
-                        <Link
-                            to="/create-campaign"
-                            className="btn bg-[#915bf8] hover:bg-[#915bf8]/90 text-white text-lg px-8"
-                        >
-                            Create Campaign
-                        </Link>
+                        {stats ? (
+                            <div className="space-y-6">
+                                <div className="text-center">
+                                    <div className="text-4xl font-bold text-[#915bf8] mb-2">{stats.totalCampaigns.toString()}</div>
+                                    <div className="text-sm font-medium text-gray-800">Total Campaigns</div>
+                                    <div className="text-xs text-gray-500">All campaigns created</div>
+                                </div>
+
+                                <div className="text-center">
+                                    <div className="text-4xl font-bold text-green-600 mb-2">{activeCampaigns.length}</div>
+                                    <div className="text-sm font-medium text-gray-800">Active Campaigns</div>
+                                    <div className="text-xs text-gray-500">Currently running</div>
+                                </div>
+
+                                <div className="text-center">
+                                    <div className="text-4xl font-bold text-blue-600 mb-2">{formatFundsAmount(Number(stats.totalFundsLocked) / 1e18, true).split(' ')[0]}</div>
+                                    <div className="text-sm font-medium text-gray-800">ETH Locked</div>
+                                    <div className="text-xs text-gray-500">Total value locked</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <div className="loading loading-spinner loading-md text-[#915bf8]"></div>
+                                <p className="mt-2 text-sm text-gray-500">Loading stats...</p>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );

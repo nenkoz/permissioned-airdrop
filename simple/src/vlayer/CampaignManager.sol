@@ -430,35 +430,6 @@ contract CampaignManager is ReentrancyGuard, Ownable {
         return domainToCampaigns[domain];
     }
 
-    function getActiveCampaignsForDomain(
-        string memory domain
-    ) external view returns (Campaign[] memory) {
-        uint256[] memory campaignIds = domainToCampaigns[domain];
-        uint256 activeCount = 0;
-
-        // Count active campaigns
-        for (uint256 i = 0; i < campaignIds.length; i++) {
-            Campaign memory campaign = campaigns[campaignIds[i]];
-            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
-                activeCount++;
-            }
-        }
-
-        // Create array of active campaigns
-        Campaign[] memory activeCampaigns = new Campaign[](activeCount);
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < campaignIds.length; i++) {
-            Campaign memory campaign = campaigns[campaignIds[i]];
-            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
-                activeCampaigns[currentIndex] = campaign;
-                currentIndex++;
-            }
-        }
-
-        return activeCampaigns;
-    }
-
     function getCampaignStats() external view returns (CampaignStats memory) {
         uint256 totalCampaigns = nextCampaignId - 1;
         uint256 activeCampaigns = 0;
@@ -486,98 +457,6 @@ contract CampaignManager is ReentrancyGuard, Ownable {
         uint256 tokenId
     ) external view returns (bool) {
         return nftClaimed[campaignId][tokenId];
-    }
-
-    function getClaimableCampaigns(
-        uint256 tokenId
-    ) external view returns (Campaign[] memory, uint256[] memory) {
-        // First verify the token exists and get its domain
-        IERC721 nftContract = IERC721(nftContractAddress);
-        require(
-            nftContract.ownerOf(tokenId) != address(0),
-            "Token does not exist"
-        );
-
-        EmailDomainVerifier emailVerifier = EmailDomainVerifier(
-            nftContractAddress
-        );
-        string memory nftDomain = emailVerifier.getTokenDomain(tokenId);
-
-        // Get all campaigns for this domain
-        uint256[] memory domainCampaigns = domainToCampaigns[nftDomain];
-
-        // Count claimable campaigns
-        uint256 claimableCount = 0;
-        for (uint256 i = 0; i < domainCampaigns.length; i++) {
-            uint256 campaignId = domainCampaigns[i];
-            Campaign memory campaign = campaigns[campaignId];
-
-            // Check if campaign is active, not expired, not claimed, and has funds
-            if (
-                campaign.isActive &&
-                block.timestamp <= campaign.expiresAt &&
-                !nftClaimed[campaignId][tokenId] &&
-                campaign.totalFunds >=
-                campaign.distributedFunds + campaign.rewardPerNFT
-            ) {
-                claimableCount++;
-            }
-        }
-
-        // Create arrays for claimable campaigns
-        Campaign[] memory claimableCampaigns = new Campaign[](claimableCount);
-        uint256[] memory claimableCampaignIds = new uint256[](claimableCount);
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < domainCampaigns.length; i++) {
-            uint256 campaignId = domainCampaigns[i];
-            Campaign memory campaign = campaigns[campaignId];
-
-            if (
-                campaign.isActive &&
-                block.timestamp <= campaign.expiresAt &&
-                !nftClaimed[campaignId][tokenId] &&
-                campaign.totalFunds >=
-                campaign.distributedFunds + campaign.rewardPerNFT
-            ) {
-                claimableCampaigns[currentIndex] = campaign;
-                claimableCampaignIds[currentIndex] = campaignId;
-                currentIndex++;
-            }
-        }
-
-        return (claimableCampaigns, claimableCampaignIds);
-    }
-
-    function getAllActiveCampaigns()
-        external
-        view
-        returns (Campaign[] memory, uint256[] memory)
-    {
-        // Count active campaigns
-        uint256 activeCount = 0;
-        for (uint256 i = 1; i < nextCampaignId; i++) {
-            Campaign memory campaign = campaigns[i];
-            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
-                activeCount++;
-            }
-        }
-
-        // Create arrays for active campaigns
-        Campaign[] memory activeCampaigns = new Campaign[](activeCount);
-        uint256[] memory activeCampaignIds = new uint256[](activeCount);
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 1; i < nextCampaignId; i++) {
-            Campaign memory campaign = campaigns[i];
-            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
-                activeCampaigns[currentIndex] = campaign;
-                activeCampaignIds[currentIndex] = i;
-                currentIndex++;
-            }
-        }
-
-        return (activeCampaigns, activeCampaignIds);
     }
 
     // Admin functions
