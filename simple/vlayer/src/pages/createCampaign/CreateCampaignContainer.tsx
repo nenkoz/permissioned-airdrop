@@ -43,12 +43,14 @@ export const CreateCampaignContainer = () => {
 
     // Handle transaction completion
     useEffect(() => {
-        if (isSuccess) {
+        if (isSuccess && hash) {
             setIsSubmitting(false);
             console.log("Campaign created successfully! Hash:", hash);
-            navigate("/success");
+            // Pass the transaction hash and campaign name to the success page via URL params
+            const campaignName = encodeURIComponent(formData.name);
+            navigate(`/success?txHash=${hash}&campaignName=${campaignName}`);
         }
-    }, [isSuccess, hash, navigate]);
+    }, [isSuccess, hash, navigate, formData.name]);
 
     // Handle errors
     useEffect(() => {
