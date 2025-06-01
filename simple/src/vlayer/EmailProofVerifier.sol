@@ -14,6 +14,14 @@ contract EmailDomainVerifier is Verifier, ERC721 {
 
     mapping(bytes32 => bool) public takenEmailHashes;
     mapping(uint256 => string) public tokenIdToMetadataUri;
+    mapping(uint256 => string) public tokenIdToDomain;
+
+    event NFTMinted(
+        uint256 indexed tokenId,
+        address indexed recipient,
+        string domain,
+        bytes32 emailHash
+    );
 
     constructor(address _prover) ERC721("EmailNFT", "EML") {
         prover = _prover;
@@ -32,13 +40,33 @@ contract EmailDomainVerifier is Verifier, ERC721 {
             "https://faucet.vlayer.xyz/api/xBadgeMeta?handle=",
             _emailDomain
         );
+        tokenIdToDomain[tokenId] = _emailDomain;
         currentTokenId = tokenId;
         _safeMint(_targetWallet, tokenId);
+
+        emit NFTMinted(tokenId, _targetWallet, _emailDomain, _emailHash);
     }
 
     function tokenURI(
         uint256 tokenId
     ) public view override returns (string memory) {
         return tokenIdToMetadataUri[tokenId];
+    }
+
+    function getTokenDomain(
+        uint256 tokenId
+    ) public view returns (string memory) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        return tokenIdToDomain[tokenId];
+    }
+
+    function isTokenFromDomain(
+        uint256 tokenId,
+        string memory domain
+    ) public view returns (bool) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        return
+            keccak256(abi.encodePacked(tokenIdToDomain[tokenId])) ==
+            keccak256(abi.encodePacked(domain));
     }
 }

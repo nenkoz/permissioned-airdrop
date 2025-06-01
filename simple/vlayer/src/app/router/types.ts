@@ -5,6 +5,7 @@ export enum StepKind {
   collectEmail,
   mintNft,
   success,
+  createCampaign,
 }
 
 export type StepMeta = {
@@ -69,5 +70,12 @@ export const stepsMeta: Record<StepKind, StepMeta> = {
     description: "",
     headerIcon: "/img/success-icon.svg",
     index: 4,
+  },
+  [StepKind.createCampaign]: {
+    path: "create-campaign",
+    kind: StepKind.createCampaign,
+    title: "Create Campaign",
+    description: "Create an airdrop campaign for domain-specific NFT holders",
+    index: 5,
   },
 };

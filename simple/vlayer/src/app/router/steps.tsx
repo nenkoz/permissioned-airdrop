@@ -6,6 +6,7 @@ import {
   MintNFTContainer,
   SuccessContainer,
 } from "../../pages";
+import { CreateCampaignContainer } from "../../pages/createCampaign";
 import React from "react";
 import { StepKind, stepsMeta, StepMeta } from "./types";
 
@@ -20,6 +21,7 @@ export const stepComponents: StepComponentMap = {
   [StepKind.collectEmail]: CollectEmailContainer,
   [StepKind.mintNft]: MintNFTContainer,
   [StepKind.success]: SuccessContainer,
+  [StepKind.createCampaign]: CreateCampaignContainer,
 };
 
 // Create a complete step structure that combines metadata with components
