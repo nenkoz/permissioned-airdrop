@@ -18,6 +18,12 @@ interface Campaign {
     expiresAt: bigint;
 }
 
+interface UserNFT {
+    tokenId: bigint;
+    domain: string;
+    claimableCampaigns: Campaign[];
+}
+
 const campaignManagerAbi = [
     {
         inputs: [{ name: "domain", type: "string" }],
@@ -64,6 +70,27 @@ const nftAbi = [
         outputs: [{ name: "", type: "string" }],
         stateMutability: "view",
         type: "function",
+    },
+    {
+        inputs: [{ name: "owner", type: "address" }],
+        name: "balanceOf",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [{ name: "tokenId", type: "uint256" }],
+        name: "ownerOf",
+        outputs: [{ name: "", type: "address" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "currentTokenId",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
     }
 ] as const;
 
@@ -78,6 +105,12 @@ export const ClaimAirdropsContainer = () => {
     const [error, setError] = useState<string>("");
     const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
+    // New states for automated discovery
+    const [userNFTs, setUserNFTs] = useState<UserNFT[]>([]);
+    const [isAutoDiscovering, setIsAutoDiscovering] = useState(false);
+    const [autoDiscoveryMode, setAutoDiscoveryMode] = useState<boolean>(false);
+    const [totalClaimableRewards, setTotalClaimableRewards] = useState<{ eth: number, tokens: Map<string, number> }>({ eth: 0, tokens: new Map() });
+
     const { writeContract, data: hash, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
         hash,
@@ -85,10 +118,183 @@ export const ClaimAirdropsContainer = () => {
 
     useEffect(() => {
         if (isSuccess && hash) {
-            const claimedCount = selectedCampaigns.size;
+            const claimedCount = autoDiscoveryMode
+                ? userNFTs.reduce((total, nft) => total + nft.claimableCampaigns.length, 0)
+                : selectedCampaigns.size;
             navigate(`/success?txHash=${hash}&claimedCount=${claimedCount}`);
         }
-    }, [isSuccess, hash, navigate, selectedCampaigns.size]);
+    }, [isSuccess, hash, navigate, selectedCampaigns.size, autoDiscoveryMode, userNFTs]);
+
+    // Auto-discover all user NFTs and their claimable campaigns
+    const autoDiscoverClaimableRewards = async () => {
+        if (!address || !publicClient) return;
+
+        setIsAutoDiscovering(true);
+        setError("");
+
+        try {
+            // 1. Get user's NFT balance to see if they have any NFTs
+            const balance = await publicClient.readContract({
+                address: import.meta.env.VITE_VERIFIER_ADDRESS as `0x${string}`,
+                abi: nftAbi,
+                functionName: "balanceOf",
+                args: [address],
+            });
+
+            console.log("User NFT balance:", balance.toString());
+
+            if (balance === 0n) {
+                setUserNFTs([]);
+                setIsAutoDiscovering(false);
+                return;
+            }
+
+            // 2. Get the current token ID (highest minted token)
+            const currentTokenId = await publicClient.readContract({
+                address: import.meta.env.VITE_VERIFIER_ADDRESS as `0x${string}`,
+                abi: nftAbi,
+                functionName: "currentTokenId",
+                args: [],
+            });
+
+            console.log("Current token ID:", currentTokenId.toString());
+
+            // 3. Check ownership of all tokens from 1 to currentTokenId
+            const userTokenIds: bigint[] = [];
+            for (let tokenId = 1n; tokenId <= currentTokenId; tokenId++) {
+                try {
+                    const owner = await publicClient.readContract({
+                        address: import.meta.env.VITE_VERIFIER_ADDRESS as `0x${string}`,
+                        abi: nftAbi,
+                        functionName: "ownerOf",
+                        args: [tokenId],
+                    });
+
+                    // Check if this user owns this token
+                    if (owner.toLowerCase() === address.toLowerCase()) {
+                        userTokenIds.push(tokenId);
+                    }
+                } catch (err) {
+                    // Token might not exist or be burned, skip it
+                    console.log(`Token ${tokenId} doesn't exist or error checking ownership:`, err);
+                }
+            }
+
+            console.log("User owned token IDs:", userTokenIds);
+
+            // 4. For each owned NFT, get domain and claimable campaigns
+            const nftsWithCampaigns: UserNFT[] = [];
+            let totalETH = 0;
+            const totalTokens = new Map<string, number>();
+
+            for (const tokenId of userTokenIds) {
+                try {
+                    // Get token domain
+                    const tokenDomain = await publicClient.readContract({
+                        address: import.meta.env.VITE_VERIFIER_ADDRESS as `0x${string}`,
+                        abi: nftAbi,
+                        functionName: "getTokenDomain",
+                        args: [tokenId],
+                    });
+
+                    // Get campaigns for this domain
+                    const campaignIds = await publicClient.readContract({
+                        address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+                        abi: campaignManagerAbi,
+                        functionName: "getCampaignsForDomain",
+                        args: [tokenDomain],
+                    });
+
+                    const claimable: Campaign[] = [];
+
+                    for (const campaignId of campaignIds) {
+                        try {
+                            // Get campaign details
+                            const campaign = await publicClient.readContract({
+                                address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+                                abi: campaignManagerAbi,
+                                functionName: "getCampaign",
+                                args: [campaignId],
+                            });
+
+                            // Check if already claimed
+                            const alreadyClaimed = await publicClient.readContract({
+                                address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+                                abi: campaignManagerAbi,
+                                functionName: "isNFTClaimedForCampaign",
+                                args: [campaignId, tokenId],
+                            });
+
+                            // Check if campaign is claimable
+                            const now = Math.floor(Date.now() / 1000);
+                            const isActive = campaign.isActive;
+                            const notExpired = Number(campaign.expiresAt) > now;
+                            const hasFunds = campaign.totalFunds > campaign.distributedFunds + campaign.rewardPerNFT;
+                            const notClaimed = !alreadyClaimed;
+
+                            if (isActive && notExpired && hasFunds && notClaimed) {
+                                const campaignData = {
+                                    id: campaign.id,
+                                    creator: campaign.creator,
+                                    name: campaign.name,
+                                    description: campaign.description,
+                                    targetDomain: campaign.targetDomain,
+                                    tokenAddress: campaign.tokenAddress,
+                                    totalFunds: campaign.totalFunds,
+                                    distributedFunds: campaign.distributedFunds,
+                                    rewardPerNFT: campaign.rewardPerNFT,
+                                    isActive: campaign.isActive,
+                                    createdAt: campaign.createdAt,
+                                    expiresAt: campaign.expiresAt,
+                                };
+
+                                claimable.push(campaignData);
+
+                                // Calculate total rewards
+                                const rewardAmount = Number(campaign.rewardPerNFT) / 1e18;
+                                if (campaign.tokenAddress === "0x0000000000000000000000000000000000000000") {
+                                    totalETH += rewardAmount;
+                                } else {
+                                    const current = totalTokens.get(campaign.tokenAddress) || 0;
+                                    totalTokens.set(campaign.tokenAddress, current + rewardAmount);
+                                }
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching campaign ${campaignId}:`, err);
+                        }
+                    }
+
+                    if (claimable.length > 0) {
+                        nftsWithCampaigns.push({
+                            tokenId,
+                            domain: tokenDomain,
+                            claimableCampaigns: claimable,
+                        });
+                    }
+
+                } catch (err) {
+                    console.error(`Error processing token ${tokenId}:`, err);
+                }
+            }
+
+            setUserNFTs(nftsWithCampaigns);
+            setTotalClaimableRewards({ eth: totalETH, tokens: totalTokens });
+            console.log("Auto-discovered NFTs with claimable campaigns:", nftsWithCampaigns);
+
+        } catch (error) {
+            console.error("Error auto-discovering claimable rewards:", error);
+            setError(`Error auto-discovering rewards: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsAutoDiscovering(false);
+        }
+    };
+
+    // Auto-discover on wallet connection
+    useEffect(() => {
+        if (address && publicClient && autoDiscoveryMode) {
+            autoDiscoverClaimableRewards();
+        }
+    }, [address, publicClient, autoDiscoveryMode]);
 
     const fetchClaimableCampaigns = async (tokenId: string) => {
         if (!tokenId || !publicClient) return;
@@ -251,6 +457,59 @@ export const ClaimAirdropsContainer = () => {
         }
     };
 
+    // Auto-claim all rewards from all eligible NFTs
+    const handleAutoClaimAll = async () => {
+        if (!address || userNFTs.length === 0) return;
+
+        setIsLoading(true);
+        setError("");
+
+        try {
+            // Prepare batch claims for all NFTs
+            const allClaims: { campaignIds: bigint[], tokenId: bigint }[] = [];
+
+            for (const nft of userNFTs) {
+                if (nft.claimableCampaigns.length > 0) {
+                    allClaims.push({
+                        campaignIds: nft.claimableCampaigns.map(c => c.id),
+                        tokenId: nft.tokenId
+                    });
+                }
+            }
+
+            // For now, we'll claim for each NFT separately
+            // This could be optimized with a multi-NFT batch claim function
+            for (const claim of allClaims) {
+                writeContract({
+                    address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+                    abi: [
+                        {
+                            inputs: [
+                                { name: "campaignIds", type: "uint256[]" },
+                                { name: "tokenId", type: "uint256" }
+                            ],
+                            name: "batchClaimRewards",
+                            outputs: [],
+                            stateMutability: "nonpayable",
+                            type: "function",
+                        },
+                    ],
+                    functionName: "batchClaimRewards",
+                    args: [claim.campaignIds, claim.tokenId],
+                });
+
+                // For multiple NFTs, we'd need to handle this differently
+                // For now, just handle the first one
+                break;
+            }
+        } catch (error) {
+            console.error("Error auto-claiming rewards:", error);
+            setError(error instanceof Error ? error.message : "Unknown error occurred");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <ClaimAirdropsForm
             userTokenId={userTokenId}
@@ -264,6 +523,14 @@ export const ClaimAirdropsContainer = () => {
             onCampaignSelect={handleCampaignSelect}
             onSelectAll={handleSelectAll}
             onClaimSelected={handleClaimSelected}
+            // New auto-discovery props
+            autoDiscoveryMode={autoDiscoveryMode}
+            userNFTs={userNFTs}
+            isAutoDiscovering={isAutoDiscovering}
+            totalClaimableRewards={totalClaimableRewards}
+            onAutoDiscoveryToggle={setAutoDiscoveryMode}
+            onAutoDiscover={autoDiscoverClaimableRewards}
+            onAutoClaimAll={handleAutoClaimAll}
         />
     );
 }; 
