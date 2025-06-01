@@ -24,8 +24,18 @@ export const WelcomePage = () => {
         Create Airdrop Campaign
       </Link>
 
-      <p className="text-sm text-gray-600 text-center max-w-md">
-        Mint an NFT with your email domain or create an airdrop campaign for domain-specific NFT holders
+      <div className="divider">OR</div>
+
+      <Link
+        to={`/${getStepPath(StepKind.claimAirdrops)}`}
+        className="btn btn-accent btn-lg"
+        data-testid="claim-airdrops-button"
+      >
+        Claim Your Airdrops
+      </Link>
+
+      <p className="text-sm text-gray-600 text-center max-w-md mt-4">
+        Mint an NFT with your email domain, create airdrop campaigns for domain holders, or claim rewards from existing campaigns
       </p>
     </div>
   );

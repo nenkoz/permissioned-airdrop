@@ -67,7 +67,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                 <input
                                     type="text"
                                     placeholder="e.g., CoinDesk Team Airdrop"
-                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                     value={formData.name}
                                     onChange={(e) => handleInputChange("name", e.target.value)}
                                     required
@@ -81,7 +81,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                 </label>
                                 <textarea
                                     placeholder="Describe your campaign..."
-                                    className="textarea textarea-bordered h-32 text-base bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                    className="textarea textarea-bordered h-32 text-base bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                     value={formData.description}
                                     onChange={(e) => handleInputChange("description", e.target.value)}
                                     required
@@ -96,7 +96,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                 <input
                                     type="text"
                                     placeholder="e.g., coindesk.com"
-                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                     value={formData.targetDomain}
                                     onChange={(e) => handleInputChange("targetDomain", e.target.value)}
                                     required
@@ -113,7 +113,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                         <span className="label-text font-semibold text-lg text-black">Reward Token</span>
                                     </label>
                                     <select
-                                        className="select select-bordered select-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        className="select select-bordered select-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900"
                                         value={formData.tokenAddress}
                                         onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
                                     >
@@ -132,7 +132,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                         type="number"
                                         step="0.001"
                                         placeholder="0.1"
-                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                         value={formData.rewardPerNFT}
                                         onChange={(e) => handleInputChange("rewardPerNFT", e.target.value)}
                                         required
@@ -149,7 +149,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                     <input
                                         type="text"
                                         placeholder="0x..."
-                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                         value={formData.tokenAddress}
                                         onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
                                         required
@@ -167,7 +167,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                         type="number"
                                         min="1"
                                         placeholder="7"
-                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                         value={formData.duration}
                                         onChange={(e) => handleInputChange("duration", e.target.value)}
                                         required
@@ -184,7 +184,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                             type="number"
                                             step="0.001"
                                             placeholder="1.0"
-                                            className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                            className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white text-gray-900 placeholder-gray-500"
                                             value={formData.initialFunding}
                                             onChange={(e) => handleInputChange("initialFunding", e.target.value)}
                                             required

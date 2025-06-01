@@ -8,10 +8,12 @@ export const SuccessContainer = () => {
   const domain = searchParams.get("domain");
   const recipient = searchParams.get("recipient");
   const campaignName = searchParams.get("campaignName");
+  const claimedCount = searchParams.get("claimedCount");
   const account = useAccount();
 
-  // Determine if this is a campaign creation or NFT minting
+  // Determine the type of success
   const isCampaignCreation = !!campaignName;
+  const isAirdropClaim = !!claimedCount;
 
   return (
     <>
@@ -26,6 +28,19 @@ export const SuccessContainer = () => {
               </p>
               <p className="text-sm text-gray-600 mt-2">
                 Users with verified email domains can now claim rewards from your campaign.
+              </p>
+            </div>
+          </>
+        ) : isAirdropClaim ? (
+          <>
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-4">💰</div>
+              <h1 className="text-2xl font-bold text-green-600 mb-2">Airdrops Claimed Successfully!</h1>
+              <p className="text-lg">
+                You have successfully claimed rewards from <b>{claimedCount}</b> campaign{claimedCount !== "1" ? "s" : ""}.
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                Your rewards have been transferred to your wallet.
               </p>
             </div>
           </>
@@ -56,6 +71,23 @@ export const SuccessContainer = () => {
               data-testid="create-another-campaign-button"
             >
               Create Another Campaign
+            </Link>
+            <Link
+              to="/"
+              className="btn btn-secondary"
+              data-testid="start-page-button"
+            >
+              Back to Home
+            </Link>
+          </>
+        ) : isAirdropClaim ? (
+          <>
+            <Link
+              to="/claim-airdrops"
+              className="btn btn-primary"
+              data-testid="claim-more-airdrops-button"
+            >
+              Claim More Airdrops
             </Link>
             <Link
               to="/"

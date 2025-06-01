@@ -218,6 +218,116 @@ contract CampaignManager is ReentrancyGuard, Ownable {
         campaignExists(campaignId)
         campaignActive(campaignId)
     {
+        _claimReward(campaignId, tokenId);
+    }
+
+    function batchClaimRewards(
+        uint256[] calldata campaignIds,
+        uint256 tokenId
+    ) external nonReentrant {
+        require(campaignIds.length > 0, "No campaigns provided");
+        require(campaignIds.length <= 50, "Too many campaigns"); // Reasonable gas limit
+
+        // Verify NFT ownership once
+        IERC721 nftContract = IERC721(nftContractAddress);
+        require(nftContract.ownerOf(tokenId) == msg.sender, "Not NFT owner");
+
+        // Get the domain for this NFT once
+        EmailDomainVerifier emailVerifier = EmailDomainVerifier(
+            nftContractAddress
+        );
+        string memory nftDomain = emailVerifier.getTokenDomain(tokenId);
+
+        uint256 totalETHReward = 0;
+        address[] memory erc20Tokens = new address[](campaignIds.length);
+        uint256[] memory erc20Amounts = new uint256[](campaignIds.length);
+        uint256 erc20Count = 0;
+
+        for (uint256 i = 0; i < campaignIds.length; i++) {
+            uint256 campaignId = campaignIds[i];
+
+            // Check campaign exists
+            require(campaigns[campaignId].id != 0, "Campaign does not exist");
+
+            Campaign storage campaign = campaigns[campaignId];
+
+            // Skip if campaign is not active or expired
+            if (!campaign.isActive || block.timestamp > campaign.expiresAt) {
+                continue;
+            }
+
+            // Skip if already claimed
+            if (nftClaimed[campaignId][tokenId]) {
+                continue;
+            }
+
+            // Skip if insufficient funds
+            if (
+                campaign.totalFunds <
+                campaign.distributedFunds + campaign.rewardPerNFT
+            ) {
+                continue;
+            }
+
+            // Skip if NFT is not from target domain
+            if (
+                keccak256(abi.encodePacked(nftDomain)) !=
+                keccak256(abi.encodePacked(campaign.targetDomain))
+            ) {
+                continue;
+            }
+
+            // Mark as claimed and update distributed funds
+            nftClaimed[campaignId][tokenId] = true;
+            campaign.distributedFunds += campaign.rewardPerNFT;
+
+            // Accumulate rewards by token type
+            if (campaign.tokenAddress == address(0)) {
+                totalETHReward += campaign.rewardPerNFT;
+            } else {
+                // Check if we already have this token
+                bool tokenFound = false;
+                for (uint256 j = 0; j < erc20Count; j++) {
+                    if (erc20Tokens[j] == campaign.tokenAddress) {
+                        erc20Amounts[j] += campaign.rewardPerNFT;
+                        tokenFound = true;
+                        break;
+                    }
+                }
+
+                if (!tokenFound) {
+                    erc20Tokens[erc20Count] = campaign.tokenAddress;
+                    erc20Amounts[erc20Count] = campaign.rewardPerNFT;
+                    erc20Count++;
+                }
+            }
+
+            emit RewardClaimed(
+                campaignId,
+                msg.sender,
+                tokenId,
+                campaign.rewardPerNFT
+            );
+        }
+
+        // Transfer all ETH rewards at once
+        if (totalETHReward > 0) {
+            payable(msg.sender).transfer(totalETHReward);
+        }
+
+        // Transfer all ERC20 rewards by token type
+        for (uint256 i = 0; i < erc20Count; i++) {
+            if (erc20Amounts[i] > 0) {
+                IERC20 token = IERC20(erc20Tokens[i]);
+                require(
+                    token.transfer(msg.sender, erc20Amounts[i]),
+                    "Token transfer failed"
+                );
+            }
+        }
+    }
+
+    function _claimReward(uint256 campaignId, uint256 tokenId) internal {
         Campaign storage campaign = campaigns[campaignId];
 
         // Verify NFT ownership
@@ -376,6 +486,98 @@ contract CampaignManager is ReentrancyGuard, Ownable {
         uint256 tokenId
     ) external view returns (bool) {
         return nftClaimed[campaignId][tokenId];
+    }
+
+    function getClaimableCampaigns(
+        uint256 tokenId
+    ) external view returns (Campaign[] memory, uint256[] memory) {
+        // First verify the token exists and get its domain
+        IERC721 nftContract = IERC721(nftContractAddress);
+        require(
+            nftContract.ownerOf(tokenId) != address(0),
+            "Token does not exist"
+        );
+
+        EmailDomainVerifier emailVerifier = EmailDomainVerifier(
+            nftContractAddress
+        );
+        string memory nftDomain = emailVerifier.getTokenDomain(tokenId);
+
+        // Get all campaigns for this domain
+        uint256[] memory domainCampaigns = domainToCampaigns[nftDomain];
+
+        // Count claimable campaigns
+        uint256 claimableCount = 0;
+        for (uint256 i = 0; i < domainCampaigns.length; i++) {
+            uint256 campaignId = domainCampaigns[i];
+            Campaign memory campaign = campaigns[campaignId];
+
+            // Check if campaign is active, not expired, not claimed, and has funds
+            if (
+                campaign.isActive &&
+                block.timestamp <= campaign.expiresAt &&
+                !nftClaimed[campaignId][tokenId] &&
+                campaign.totalFunds >=
+                campaign.distributedFunds + campaign.rewardPerNFT
+            ) {
+                claimableCount++;
+            }
+        }
+
+        // Create arrays for claimable campaigns
+        Campaign[] memory claimableCampaigns = new Campaign[](claimableCount);
+        uint256[] memory claimableCampaignIds = new uint256[](claimableCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 0; i < domainCampaigns.length; i++) {
+            uint256 campaignId = domainCampaigns[i];
+            Campaign memory campaign = campaigns[campaignId];
+
+            if (
+                campaign.isActive &&
+                block.timestamp <= campaign.expiresAt &&
+                !nftClaimed[campaignId][tokenId] &&
+                campaign.totalFunds >=
+                campaign.distributedFunds + campaign.rewardPerNFT
+            ) {
+                claimableCampaigns[currentIndex] = campaign;
+                claimableCampaignIds[currentIndex] = campaignId;
+                currentIndex++;
+            }
+        }
+
+        return (claimableCampaigns, claimableCampaignIds);
+    }
+
+    function getAllActiveCampaigns()
+        external
+        view
+        returns (Campaign[] memory, uint256[] memory)
+    {
+        // Count active campaigns
+        uint256 activeCount = 0;
+        for (uint256 i = 1; i < nextCampaignId; i++) {
+            Campaign memory campaign = campaigns[i];
+            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
+                activeCount++;
+            }
+        }
+
+        // Create arrays for active campaigns
+        Campaign[] memory activeCampaigns = new Campaign[](activeCount);
+        uint256[] memory activeCampaignIds = new uint256[](activeCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 1; i < nextCampaignId; i++) {
+            Campaign memory campaign = campaigns[i];
+            if (campaign.isActive && block.timestamp <= campaign.expiresAt) {
+                activeCampaigns[currentIndex] = campaign;
+                activeCampaignIds[currentIndex] = i;
+                currentIndex++;
+            }
+        }
+
+        return (activeCampaigns, activeCampaignIds);
     }
 
     // Admin functions
