@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router";
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import { CampaignFormData } from "./CreateCampaignContainer";
 
 interface CreateCampaignFormProps {
@@ -28,27 +30,44 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
     const isETHCampaign = formData.tokenAddress === "0x0000000000000000000000000000000000000000";
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-            <div className="max-w-2xl mx-auto">
-                <div className="card bg-base-100 shadow-xl">
-                    <div className="card-body">
-                        <h2 className="card-title text-3xl font-bold text-center mb-6">
-                            Create Airdrop Campaign
-                        </h2>
-                        <p className="text-center text-gray-600 mb-8">
-                            Create a campaign to distribute tokens to holders of domain-specific NFTs
-                        </p>
+        <div className="min-h-screen">
+            {/* Navigation */}
+            <div className="max-w-4xl mx-auto pt-6 pb-4 px-6">
+                <Link
+                    to="/"
+                    className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                    <ChevronLeftIcon className="w-5 h-5" />
+                    <span>Back to Home</span>
+                </Link>
+            </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Header */}
+            <div className="max-w-4xl mx-auto mb-8 px-6">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-black mb-4">
+                        Create Airdrop Campaign
+                    </h1>
+                    <p className="text-lg text-gray-500">
+                        Distribute tokens to holders of domain-specific NFTs
+                    </p>
+                </div>
+            </div>
+
+            {/* Main Form */}
+            <div className="max-w-4xl mx-auto px-6 pb-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+                    <div className="p-8">
+                        <form onSubmit={handleSubmit} className="space-y-8">
                             {/* Campaign Name */}
                             <div className="form-control">
                                 <label className="label">
-                                    <span className="label-text font-semibold">Campaign Name</span>
+                                    <span className="label-text font-semibold text-lg text-black">Campaign Name</span>
                                 </label>
                                 <input
                                     type="text"
                                     placeholder="e.g., CoinDesk Team Airdrop"
-                                    className="input input-bordered w-full"
+                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
                                     value={formData.name}
                                     onChange={(e) => handleInputChange("name", e.target.value)}
                                     required
@@ -58,11 +77,11 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                             {/* Description */}
                             <div className="form-control">
                                 <label className="label">
-                                    <span className="label-text font-semibold">Description</span>
+                                    <span className="label-text font-semibold text-lg text-black">Description</span>
                                 </label>
                                 <textarea
                                     placeholder="Describe your campaign..."
-                                    className="textarea textarea-bordered h-24"
+                                    className="textarea textarea-bordered h-32 text-base bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
                                     value={formData.description}
                                     onChange={(e) => handleInputChange("description", e.target.value)}
                                     required
@@ -72,46 +91,65 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                             {/* Target Domain */}
                             <div className="form-control">
                                 <label className="label">
-                                    <span className="label-text font-semibold">Target Email Domain</span>
+                                    <span className="label-text font-semibold text-lg text-black">Target Email Domain</span>
                                 </label>
                                 <input
                                     type="text"
                                     placeholder="e.g., coindesk.com"
-                                    className="input input-bordered w-full"
+                                    className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
                                     value={formData.targetDomain}
                                     onChange={(e) => handleInputChange("targetDomain", e.target.value)}
                                     required
                                 />
                                 <label className="label">
-                                    <span className="label-text-alt">Only NFT holders from this domain can claim rewards</span>
+                                    <span className="label-text-alt text-sm text-gray-500">Only NFT holders from this domain can claim rewards</span>
                                 </label>
                             </div>
 
-                            {/* Token Type Selection */}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text font-semibold">Reward Token</span>
-                                </label>
-                                <select
-                                    className="select select-bordered w-full"
-                                    value={formData.tokenAddress}
-                                    onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
-                                >
-                                    <option value="0x0000000000000000000000000000000000000000">ETH</option>
-                                    <option value="">Custom ERC20 Token</option>
-                                </select>
+                            {/* Token Type and Reward */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-lg text-black">Reward Token</span>
+                                    </label>
+                                    <select
+                                        className="select select-bordered select-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        value={formData.tokenAddress}
+                                        onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
+                                    >
+                                        <option value="0x0000000000000000000000000000000000000000">ETH</option>
+                                        <option value="">Custom ERC20 Token</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-lg text-black">
+                                            Reward per NFT ({isETHCampaign ? "ETH" : "Tokens"})
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.001"
+                                        placeholder="0.1"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        value={formData.rewardPerNFT}
+                                        onChange={(e) => handleInputChange("rewardPerNFT", e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
 
                             {/* Custom Token Address */}
                             {formData.tokenAddress === "" && (
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">Token Contract Address</span>
+                                        <span className="label-text font-semibold text-lg text-black">Token Contract Address</span>
                                     </label>
                                     <input
                                         type="text"
                                         placeholder="0x..."
-                                        className="input input-bordered w-full"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
                                         value={formData.tokenAddress}
                                         onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
                                         required
@@ -119,73 +157,57 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                 </div>
                             )}
 
-                            {/* Reward per NFT */}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text font-semibold">
-                                        Reward per NFT ({isETHCampaign ? "ETH" : "Tokens"})
-                                    </span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.001"
-                                    placeholder="0.1"
-                                    className="input input-bordered w-full"
-                                    value={formData.rewardPerNFT}
-                                    onChange={(e) => handleInputChange("rewardPerNFT", e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            {/* Campaign Duration */}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text font-semibold">Campaign Duration (Days)</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    placeholder="7"
-                                    className="input input-bordered w-full"
-                                    value={formData.duration}
-                                    onChange={(e) => handleInputChange("duration", e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            {/* Initial Funding */}
-                            {isETHCampaign && (
+                            {/* Duration and Funding */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">Initial Funding (ETH)</span>
+                                        <span className="label-text font-semibold text-lg text-black">Campaign Duration (Days)</span>
                                     </label>
                                     <input
                                         type="number"
-                                        step="0.001"
-                                        placeholder="1.0"
-                                        className="input input-bordered w-full"
-                                        value={formData.initialFunding}
-                                        onChange={(e) => handleInputChange("initialFunding", e.target.value)}
+                                        min="1"
+                                        placeholder="7"
+                                        className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                        value={formData.duration}
+                                        onChange={(e) => handleInputChange("duration", e.target.value)}
                                         required
                                     />
-                                    <label className="label">
-                                        <span className="label-text-alt">
-                                            Minimum required to cover gas and platform fees (2.5%)
-                                        </span>
-                                    </label>
                                 </div>
-                            )}
+
+                                {/* Initial Funding */}
+                                {isETHCampaign && (
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold text-lg text-black">Initial Funding (ETH)</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.001"
+                                            placeholder="1.0"
+                                            className="input input-bordered input-lg w-full bg-purple-50/50 focus:border-[#915bf8] focus:outline-none focus:bg-white"
+                                            value={formData.initialFunding}
+                                            onChange={(e) => handleInputChange("initialFunding", e.target.value)}
+                                            required
+                                        />
+                                        <label className="label">
+                                            <span className="label-text-alt text-sm text-gray-500">
+                                                Includes 2.5% platform fee
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Submit Button */}
-                            <div className="form-control mt-8">
+                            <div className="form-control pt-4">
                                 {!isConnected ? (
-                                    <div className="alert alert-warning">
-                                        <span>Please connect your wallet to continue</span>
+                                    <div className="alert alert-warning bg-orange-50 border border-orange-200">
+                                        <span className="text-orange-700">Please connect your wallet to continue</span>
                                     </div>
                                 ) : (
                                     <button
                                         type="submit"
-                                        className={`btn btn-primary btn-lg ${isSubmitting ? "loading" : ""}`}
+                                        className={`btn w-full px-4 bg-[#915bf8] rounded-lg border-none text-white hover:bg-[#915bf8]/80 hover:text-white text-lg h-14 ${isSubmitting ? "loading" : ""}`}
                                         disabled={isSubmitting || !isConnected}
                                     >
                                         {isSubmitting ? "Creating Campaign..." : "Create Campaign"}
@@ -193,29 +215,6 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
                                 )}
                             </div>
                         </form>
-                    </div>
-                </div>
-
-                {/* Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                    <div className="card bg-base-100 shadow">
-                        <div className="card-body">
-                            <h3 className="card-title text-lg">How it works</h3>
-                            <p className="text-sm">
-                                Users with email addresses from your target domain can mint NFTs using vlayer email proofs.
-                                Then they can claim rewards from your campaign.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="card bg-base-100 shadow">
-                        <div className="card-body">
-                            <h3 className="card-title text-lg">Platform Fee</h3>
-                            <p className="text-sm">
-                                A 2.5% platform fee is applied to all funding.
-                                Unused funds can be withdrawn after the campaign ends.
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>

@@ -15,8 +15,8 @@ import { ErrorBoundary } from "react-error-boundary";
 import { StepErrorBoundaryComponent } from "../../errors/ErrorBoundary";
 
 export const modalContext = createContext({
-  showModal: () => {},
-  closeModal: () => {},
+  showModal: () => { },
+  closeModal: () => { },
 });
 
 export const Modal = ({ children }: { children: React.ReactNode }) => {
@@ -36,9 +36,11 @@ export const Modal = ({ children }: { children: React.ReactNode }) => {
   const { currentStep } = useCurrentStep();
   const [isWelcome, setIsWelcome] = useState(false);
   const [isSuccessStep, setIsSuccessStep] = useState(false);
+  const [isCreateCampaign, setIsCreateCampaign] = useState(false);
   useEffect(() => {
     setIsWelcome(currentStep?.kind === StepKind.welcome);
     setIsSuccessStep(currentStep?.kind === StepKind.success);
+    setIsCreateCampaign(currentStep?.kind === StepKind.createCampaign);
   }, [currentStep?.kind]);
 
   const [descClass, setDescClass] = useState("");
@@ -61,7 +63,7 @@ export const Modal = ({ children }: { children: React.ReactNode }) => {
         >
           <Navigation />
           <AnimatePresence>
-            {!isWelcome && !isSuccessStep && <ProgressBar />}
+            {!isWelcome && !isSuccessStep && !isCreateCampaign && <ProgressBar />}
           </AnimatePresence>
           <ErrorBoundary FallbackComponent={StepErrorBoundaryComponent}>
             <AnimatePresence>
