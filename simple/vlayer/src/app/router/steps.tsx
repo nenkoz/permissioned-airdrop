@@ -8,6 +8,7 @@ import {
 } from "../../pages";
 import { CreateCampaignContainer } from "../../pages/createCampaign";
 import { ClaimAirdropsContainer } from "../../pages/claimAirdrops/ClaimAirdropsContainer";
+import { CampaignsPage } from "../../pages/campaigns";
 import React from "react";
 import { StepKind, stepsMeta, StepMeta } from "./types";
 
@@ -24,6 +25,7 @@ export const stepComponents: StepComponentMap = {
   [StepKind.success]: SuccessContainer,
   [StepKind.createCampaign]: CreateCampaignContainer,
   [StepKind.claimAirdrops]: ClaimAirdropsContainer,
+  [StepKind.campaigns]: CampaignsPage,
 };
 
 // Create a complete step structure that combines metadata with components

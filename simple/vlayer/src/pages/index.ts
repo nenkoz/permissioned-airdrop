@@ -5,3 +5,4 @@ export * from "./sendEmail";
 export * from "./collectEmail";
 export * from "./success";
 export * from "./claimAirdrops";
+export * from "./campaigns";

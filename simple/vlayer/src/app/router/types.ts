@@ -7,6 +7,7 @@ export enum StepKind {
   success,
   createCampaign,
   claimAirdrops,
+  campaigns,
 }
 
 export type StepMeta = {
@@ -85,5 +86,12 @@ export const stepsMeta: Record<StepKind, StepMeta> = {
     title: "Claim Airdrops",
     description: "Claim rewards from airdrop campaigns",
     index: 6,
+  },
+  [StepKind.campaigns]: {
+    path: "campaigns",
+    kind: StepKind.campaigns,
+    title: "Live Campaigns",
+    description: "View all active airdrop campaigns with detailed statistics",
+    index: 7,
   },
 };
