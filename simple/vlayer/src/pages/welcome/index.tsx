@@ -2,8 +2,41 @@ import { Link } from "react-router";
 import { getStepPath } from "../../app/router/steps";
 import { StepKind } from "../../app/router/types";
 import { CampaignStatsCard } from "../../shared/layout/CampaignSidebar";
+import { useReadContract } from "wagmi";
+
+interface CampaignStats {
+  totalCampaigns: bigint;
+  activeCampaigns: bigint;
+  totalFundsLocked: bigint;
+}
 
 export const WelcomePage = () => {
+  // Fetch campaign stats to check if we should show latest campaign
+  const { data: statsData } = useReadContract({
+    address: import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS as `0x${string}`,
+    abi: [
+      {
+        inputs: [],
+        name: "getCampaignStats",
+        outputs: [
+          {
+            name: "", type: "tuple", components: [
+              { name: "totalCampaigns", type: "uint256" },
+              { name: "activeCampaigns", type: "uint256" },
+              { name: "totalFundsLocked", type: "uint256" },
+            ]
+          }
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
+    functionName: "getCampaignStats",
+  });
+
+  const stats = statsData as CampaignStats | undefined;
+  const hasCampaigns = stats && stats.totalCampaigns > 0n;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       <div className="max-w-[1400px] mx-auto px-6 py-6">
@@ -114,82 +147,35 @@ export const WelcomePage = () => {
                   </div>
                 </div>
 
-                {/* Latest Campaign Section */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <div className="text-center mb-4">
-                    <h4 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-1">
-                      Latest Campaign
-                    </h4>
-                    <div className="w-20 h-0.5 bg-gradient-to-r from-purple-600 to-green-600 mx-auto rounded-full"></div>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-4 border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-lg">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h5 className="text-lg font-bold text-gray-900 mb-1">gmail</h5>
-                        <p className="text-sm text-gray-600">gmail desc</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-green-600">0.00000110 ETH</div>
-                        <div className="text-xs text-gray-500">per claim</div>
-                      </div>
+                {/* Dynamic Latest Campaign Section - Only show if campaigns exist */}
+                {hasCampaigns && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="text-center mb-4">
+                      <h4 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-1">
+                        Live Campaigns Available
+                      </h4>
+                      <div className="w-20 h-0.5 bg-gradient-to-r from-purple-600 to-green-600 mx-auto rounded-full"></div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-4 border border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-lg">
                       <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <span className="text-purple-600 mr-1">🌐</span>
-                          <span className="text-xs text-gray-500">Target Domain</span>
-                        </div>
-                        <div className="text-sm font-semibold text-purple-600">@gmail.com</div>
+                        <div className="text-4xl mb-3">🎉</div>
+                        <h5 className="text-lg font-bold text-gray-900 mb-2">
+                          {stats?.activeCampaigns.toString()} Active Campaign{stats?.activeCampaigns === 1n ? '' : 's'}
+                        </h5>
+                        <p className="text-sm text-gray-600 mb-4">
+                          There {stats?.activeCampaigns === 1n ? 'is' : 'are'} currently {stats?.activeCampaigns.toString()} live campaign{stats?.activeCampaigns === 1n ? '' : 's'} you can participate in
+                        </p>
+                        <Link
+                          to="/campaigns"
+                          className="inline-block bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-blue-700 transition-all duration-300 hover:scale-105"
+                        >
+                          View All Campaigns
+                        </Link>
                       </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <span className="text-orange-600 mr-1">⏰</span>
-                          <span className="text-xs text-gray-500">Expires</span>
-                        </div>
-                        <div className="text-sm font-semibold text-orange-600">6d 23h left</div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <span className="text-blue-600 mr-1">💰</span>
-                          <span className="text-xs text-gray-500">Funds Left</span>
-                        </div>
-                        <div className="text-sm font-semibold text-blue-600">0.00000322 ETH</div>
-                      </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <span className="text-green-600 mr-1">🪙</span>
-                          <span className="text-xs text-gray-500">Token Type</span>
-                        </div>
-                        <div className="text-sm font-semibold text-green-600">ETH</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                      <span>Campaign Progress</span>
-                      <span>0.0% distributed</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                      <div className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full" style={{ width: '0%' }}></div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-500">
-                        Created by: <span className="font-mono">0xb6ad...8CA3</span>
-                      </div>
-                      <Link
-                        to="/campaigns"
-                        className="text-xs bg-purple-600 text-white px-3 py-1 rounded-full hover:bg-purple-700 transition-colors"
-                      >
-                        View Details
-                      </Link>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
