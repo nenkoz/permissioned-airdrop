@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { truncateHashOrAddr } from "../../shared/lib/utils";
 import { useAccount } from "wagmi";
+import { getBlockscoutTxUrl, openBlockscoutLink } from "../../shared/utils/blockscout";
 
 export const SuccessContainer = () => {
   const [searchParams] = useSearchParams();
@@ -50,15 +51,40 @@ export const SuccessContainer = () => {
           </>
         )}
 
+        {/* Enhanced Blockscout Integration */}
         {txHash && (
-          <a
-            href={`${account.chain?.blockExplorers?.default.url}/tx/${txHash}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-violet-500 font-bold block mt-5 text-center"
-          >
-            View on block explorer
-          </a>
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">🔍 View Transaction Details</h3>
+              <p className="text-sm text-gray-600">
+                Verify your transaction on Blockscout - the most comprehensive blockchain explorer
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => openBlockscoutLink(getBlockscoutTxUrl(txHash))}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🔍</span>
+                View on Blockscout
+              </button>
+
+              <button
+                onClick={() => window.open('https://eth-sepolia.blockscout.com', '_blank')}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🌐</span>
+                Explore Blockscout
+              </button>
+            </div>
+
+            <div className="text-center mt-3">
+              <p className="text-xs text-gray-500">
+                🛡️ Powered by Blockscout - Open source, transparent blockchain exploration
+              </p>
+            </div>
+          </div>
         )}
       </div>
 

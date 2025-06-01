@@ -3,6 +3,7 @@ import { getStepPath } from "../../app/router/steps";
 import { StepKind } from "../../app/router/types";
 import { CampaignStatsCard } from "../../shared/layout/CampaignSidebar";
 import { useReadContract } from "wagmi";
+import { getBlockscoutContractUrl, openBlockscoutLink } from "../../shared/utils/blockscout";
 
 interface CampaignStats {
   totalCampaigns: bigint;
@@ -186,21 +187,21 @@ export const WelcomePage = () => {
               <CampaignStatsCard />
             </div>
 
-            {/* Additional Professional Touch */}
-            <div className="mt-2 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-4 text-white">
+            {/* Enhanced Blockscout Integration Section */}
+            <div className="mt-2 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-3 text-white">
               <div className="text-center">
-                <div className="mb-3">
-                  <div className="flex justify-center items-center mb-3">
+                <div className="mb-2">
+                  <div className="flex justify-center items-center mb-2">
                     <img
                       src="/img/vlayer-logo.png"
                       alt="vlayer logo"
-                      className="h-12 w-auto object-contain"
+                      className="h-10 w-auto object-contain"
                       onError={(e) => {
                         // Fallback if logo not found
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.parentElement!.innerHTML = `
-                          <div class="text-2xl mb-2">⚡</div>
-                          <div class="text-xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">
+                          <div class="text-xl mb-1">⚡</div>
+                          <div class="text-lg font-bold text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">
                             vlayer
                           </div>
                         `;
@@ -208,20 +209,39 @@ export const WelcomePage = () => {
                     />
                   </div>
                 </div>
-                <h3 className="text-base font-bold mb-2">Blockchain Infrastructure</h3>
-                <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                  Built on vlayer's innovative blockchain infrastructure with Blockscout explorer integration for complete transparency
+                <h3 className="text-sm font-bold mb-2">Powered by Blockscout Explorer</h3>
+                <p className="text-gray-300 text-xs leading-relaxed mb-3">
+                  Built on vlayer with full Blockscout integration for complete transparency. View all contracts, transactions, and proofs on Blockscout.
                 </p>
                 <div className="space-y-2">
                   <Link
                     to="/campaigns"
-                    className="inline-block bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-colors w-full"
+                    className="inline-block bg-white text-gray-900 px-3 py-1.5 rounded-lg font-semibold text-xs hover:bg-gray-100 transition-colors w-full"
                   >
                     View Live Campaigns
                   </Link>
-                  <div className="flex items-center justify-center text-xs text-gray-400">
-                    <span className="mr-1">🔍</span>
-                    Powered by Blockscout Explorer
+
+                  {/* Blockscout Integration Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => openBlockscoutLink(getBlockscoutContractUrl(import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS))}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span>🔍</span>
+                      View Contracts
+                    </button>
+                    <button
+                      onClick={() => window.open('https://eth-sepolia.blockscout.com', '_blank')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span>🌐</span>
+                      Open Blockscout
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-center text-xs text-gray-400 mt-2">
+                    <span className="mr-1">🛡️</span>
+                    All transactions verified on Blockscout Explorer
                   </div>
                 </div>
               </div>

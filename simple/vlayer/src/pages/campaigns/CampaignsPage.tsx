@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useReadContract, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { ChevronLeftIcon, ClockIcon, CurrencyDollarIcon, UsersIcon, GlobeAltIcon, CalendarIcon } from "@heroicons/react/24/outline";
+import { getBlockscoutContractUrl, getBlockscoutAddressUrl, openBlockscoutLink, shortenAddress } from "../../shared/utils/blockscout";
 
 interface CampaignStats {
     totalCampaigns: bigint;
@@ -382,10 +383,38 @@ export const CampaignsPage: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Creator Info */}
-                                        <div className="text-sm text-gray-500">
-                                            <span>Created by: </span>
-                                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{campaign.creator.slice(0, 6)}...{campaign.creator.slice(-4)}</span>
+                                        {/* Creator Info & Blockscout Integration */}
+                                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                                            <div className="text-sm text-gray-500">
+                                                <span>Created by: </span>
+                                                <button
+                                                    onClick={() => openBlockscoutLink(getBlockscoutAddressUrl(campaign.creator))}
+                                                    className="font-mono text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors cursor-pointer"
+                                                    title="View creator address on Blockscout"
+                                                >
+                                                    {shortenAddress(campaign.creator)}
+                                                </button>
+                                            </div>
+
+                                            {/* Blockscout Actions */}
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openBlockscoutLink(getBlockscoutContractUrl(import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS))}
+                                                    className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
+                                                    title="View campaign contract on Blockscout"
+                                                >
+                                                    <span>🔍</span>
+                                                    Contract
+                                                </button>
+                                                <button
+                                                    onClick={() => openBlockscoutLink(getBlockscoutAddressUrl(campaign.creator))}
+                                                    className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
+                                                    title="View creator on Blockscout"
+                                                >
+                                                    <span>👤</span>
+                                                    Creator
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
